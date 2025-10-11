@@ -1,0 +1,13 @@
+numpy
+pandas
+scikit-learn
+nltk
+spacy
+matplotlib
+seaborn
+transformers
+torch
+tqdm
+pillow
+peft
+accelerate
