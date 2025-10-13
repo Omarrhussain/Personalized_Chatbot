@@ -36,9 +36,6 @@ wheels/
 .installed.codes
 .pytest_cache/
 
-# Jupyter
-.ipynb_checkpoints
-*.ipynb
 
 # OS
 .DS_Store

@@ -11,3 +11,7 @@ tqdm
 pillow
 peft
 accelerate
+evaluate
+bert-score
+sacrebleu
+rouge-score
