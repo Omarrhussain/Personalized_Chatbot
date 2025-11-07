@@ -1,17 +1,44 @@
+# Core Data Science
 numpy
 pandas
 scikit-learn
+scipy
+
+# Natural Language Processing
 nltk
 spacy
+textblob
+
+# Deep Learning & Transformers
+torch
+transformers
+tokenizers
+datasets
+accelerate
+peft
+bitsandbytes
+
+# Gemini API & RAG System
+google-generativeai
+langchain
+faiss-cpu
+sentence-transformers
+
+# Data Visualization
 matplotlib
 seaborn
-transformers
-torch
+plotly
+
+# Jupyter & Notebooks
+jupyter
+jupyterlab
+ipykernel
+
+# Utilities & File Handling
 tqdm
-pillow
-peft
-accelerate
-evaluate
-bert-score
-sacrebleu
+requests
+
+# Evaluation & Testing
+pytest
 rouge-score
+evaluate
