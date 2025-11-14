@@ -11,9 +11,9 @@ from pathlib import Path
 def get_vector_db_path():
     # Try multiple possible paths
     possible_paths = [
-        Path("model/gemini-rag"),  # Local development
-        Path("/app/model/gemini-rag"),  # Railway default
-        Path("./model/gemini-rag"),  # Relative path
+        Path("model/gemini-rag-small"),  # Local development
+        Path("/app/model/gemini-rag-small"),  # Railway default
+        Path("./model/gemini-rag-small"),  # Relative path
     ]
     
     for path in possible_paths:
