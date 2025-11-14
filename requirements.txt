@@ -1,7 +1,7 @@
 streamlit
 google-generativeai
 langchain
-langchain-community>=0.0.10  # ← ADD THIS LINE
+langchain-community>=0.0.10
 faiss-cpu
 sentence-transformers
 fastapi
