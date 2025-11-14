@@ -5,6 +5,30 @@ import os
 import sys
 import traceback
 import logging
+from pathlib import Path
+
+# Fix path for Railway deployment
+def get_vector_db_path():
+    # Try multiple possible paths
+    possible_paths = [
+        Path("model/gemini-rag"),  # Local development
+        Path("/app/model/gemini-rag"),  # Railway default
+        Path("./model/gemini-rag"),  # Relative path
+    ]
+    
+    for path in possible_paths:
+        if path.exists():
+            print(f"✅ Found vector database at: {path}")
+            return str(path)
+    
+    # List what directories actually exist
+    print("🔍 Searching for model directory...")
+    for root, dirs, files in os.walk("/app"):
+        for dir in dirs:
+            if "model" in dir.lower():
+                print(f"Found directory: {os.path.join(root, dir)}")
+    
+    raise FileNotFoundError("Vector database not found in any expected location")
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))

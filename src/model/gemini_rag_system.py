@@ -13,40 +13,31 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 logger = logging.getLogger(__name__)
 
 class GeminiRAGSystem:
-    def __init__(self, vector_db_path: str = None):
-        # Use absolute path to vector database
-        if vector_db_path is None:
-            # Get absolute path to project root
-            current_file = Path(__file__)
-            project_root = current_file.parent.parent.parent  # Goes up to personalized_chatbot
-            self.vector_db_path = project_root / "model" / "gemini-rag"
+   def __init__(self, vector_db_path: str = None):
+    # Use absolute path to vector database
+    if vector_db_path is None:
+        # Try multiple deployment environments
+        possible_paths = [
+            Path(__file__).parent.parent.parent / "model" / "gemini-rag",  # Local
+            Path("/app/model/gemini-rag"),  # Railway
+            Path("/opt/render/project/src/model/gemini-rag"),  # Render
+            Path("./model/gemini-rag"),  # Current directory
+        ]
+        
+        for path in possible_paths:
+            if path.exists():
+                self.vector_db_path = path
+                logger.info(f"✅ Found vector database at: {path}")
+                break
         else:
-            self.vector_db_path = Path(vector_db_path)
-        
-        self.conversation_history = []
-        
-        try:
-            # Import config
-            from config.api_keys import GEMINI_API_KEY
-            
-            if not GEMINI_API_KEY:
-                raise ValueError("Gemini API key not configured. Please update config/api_keys.py")
-            
-            # Initialize Gemini
-            genai.configure(api_key=GEMINI_API_KEY)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
-            
-            # Load vector database
-            self.vector_db = self._load_vector_db()
-            self.retriever = self.vector_db.as_retriever(search_kwargs={"k": 3})
-            
-            logger.info(f"✅ Gemini RAG System initialized successfully!")
-            logger.info(f"📁 Vector DB path: {self.vector_db_path}")
-            
-        except ImportError as e:
-            raise Exception(f"Configuration error: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Initialization error: {str(e)}")
+            # If no path found, use local development path
+            current_file = Path(__file__)
+            project_root = current_file.parent.parent.parent
+            self.vector_db_path = project_root / "model" / "gemini-rag"
+    else:
+        self.vector_db_path = Path(vector_db_path)
+    
+    logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
     
     def _load_vector_db(self) -> FAISS:
         """Load FAISS vector database"""
