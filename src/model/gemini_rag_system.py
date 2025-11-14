@@ -5,7 +5,7 @@ import os
 import sys
 import logging
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Tuple
 
 # Add config to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
@@ -13,32 +13,42 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 logger = logging.getLogger(__name__)
 
 class GeminiRAGSystem:
-   def __init__(self, vector_db_path: str = None):
-    # Use absolute path to vector database
-    if vector_db_path is None:
-        # Try multiple deployment environments
-        possible_paths = [
-            Path(__file__).parent.parent.parent / "model" / "gemini-rag",  # Local
-            Path("/app/model/gemini-rag-small"),  # Railway
-            Path("/opt/render/project/src/model/gemini-rag-small"),  # Render
-            Path("./model/gemini-rag-small"),  # Current directory
-        ]
-        
-        for path in possible_paths:
-            if path.exists():
-                self.vector_db_path = path
-                logger.info(f"✅ Found vector database at: {path}")
-                break
+    def __init__(self, vector_db_path: str = None):
+        # Use absolute path to vector database
+        if vector_db_path is None:
+            # Try multiple deployment environments - UPDATED FOR SMALL DB
+            possible_paths = [
+                Path(__file__).parent.parent.parent / "model" / "gemini-rag-small",  # Local
+                Path("/app/model/gemini-rag-small"),  # Railway
+                Path("/opt/render/project/src/model/gemini-rag-small"),  # Render
+                Path("./model/gemini-rag-small"),  # Current directory
+                # Fallback to old path just in case
+                Path(__file__).parent.parent.parent / "model" / "gemini-rag",  # Legacy
+            ]
+            
+            for path in possible_paths:
+                if path.exists():
+                    self.vector_db_path = path
+                    logger.info(f"✅ Found vector database at: {path}")
+                    break
+            else:
+                # If no path found, use small DB as default
+                current_file = Path(__file__)
+                project_root = current_file.parent.parent.parent
+                self.vector_db_path = project_root / "model" / "gemini-rag-small"
         else:
-            # If no path found, use local development path
-            current_file = Path(__file__)
-            project_root = current_file.parent.parent.parent
-            self.vector_db_path = project_root / "model" / "gemini-rag"
-    else:
-        self.vector_db_path = Path(vector_db_path)
-    
-    logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
-    
+            self.vector_db_path = Path(vector_db_path)
+        
+        logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
+        
+        # Initialize components
+        self.vector_db = self._load_vector_db()
+        self.retriever = self.vector_db.as_retriever(search_kwargs={"k": 3})
+        self.model = self._initialize_gemini()
+        self.conversation_history: List[Tuple[str, str]] = []
+        
+        logger.info("✅ Gemini RAG System initialized successfully!")
+
     def _load_vector_db(self) -> FAISS:
         """Load FAISS vector database"""
         logger.info(f"🔍 Looking for vector database at: {self.vector_db_path}")
@@ -72,19 +82,31 @@ class GeminiRAGSystem:
             return vector_db
         except Exception as e:
             raise Exception(f"Failed to load vector database: {str(e)}")
-    
+
+    def _initialize_gemini(self):
+        """Initialize Gemini model"""
+        try:
+            # Configure Gemini - make sure you have GOOGLE_API_KEY set
+            genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+            model = genai.GenerativeModel('gemini-pro')
+            logger.info("✅ Gemini model initialized successfully!")
+            return model
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
+            raise
+
     def ask_question(self, question: str, use_history: bool = True) -> Dict:
         """Ask question with RAG context"""
         try:
-            # Get relevant context - UPDATED API
-            docs = self.retriever.invoke(question)  # ✅ Changed to invoke()
+            # Get relevant context
+            docs = self.retriever.invoke(question)
             context = "\n\n".join([doc.page_content for doc in docs])
             
             # Build prompt with history
             history_text = ""
             if use_history and self.conversation_history:
                 history_text = "\nPrevious conversation:\n"
-                for q, a in self.conversation_history[-3:]:
+                for q, a in self.conversation_history[-3:]:  # Last 3 exchanges
                     history_text += f"User: {q}\nAssistant: {a}\n"
             
             prompt = f"""Based on the following context, provide a helpful answer.
@@ -101,7 +123,7 @@ Please provide a clear and accurate response:"""
             # Update conversation history
             if use_history:
                 self.conversation_history.append((question, response.text))
-                if len(self.conversation_history) > 5:
+                if len(self.conversation_history) > 5:  # Keep last 5 exchanges
                     self.conversation_history.pop(0)
             
             return {
@@ -117,3 +139,8 @@ Please provide a clear and accurate response:"""
                 'answer': f"Error: {str(e)}",
                 'sources_count': 0
             }
+
+    def clear_history(self):
+        """Clear conversation history"""
+        self.conversation_history.clear()
+        logger.info("🗑️ Conversation history cleared")
