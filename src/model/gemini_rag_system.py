@@ -19,9 +19,9 @@ class GeminiRAGSystem:
         # Try multiple deployment environments
         possible_paths = [
             Path(__file__).parent.parent.parent / "model" / "gemini-rag",  # Local
-            Path("/app/model/gemini-rag"),  # Railway
-            Path("/opt/render/project/src/model/gemini-rag"),  # Render
-            Path("./model/gemini-rag"),  # Current directory
+            Path("/app/model/gemini-rag-small"),  # Railway
+            Path("/opt/render/project/src/model/gemini-rag-small"),  # Render
+            Path("./model/gemini-rag-small"),  # Current directory
         ]
         
         for path in possible_paths:
