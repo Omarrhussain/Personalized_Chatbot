@@ -1,53 +1,12 @@
-# Core Data Science
-numpy
-pandas
-scikit-learn
-scipy
-
-# Natural Language Processing
-nltk
-spacy
-textblob
-
-# Deep Learning & Transformers
-torch
-transformers
-tokenizers
-datasets
-accelerate
-peft
-bitsandbytes
-
-# Gemini API & RAG System
+streamlit
 google-generativeai
 langchain
+langchain-community>=0.0.10  # ← ADD THIS LINE
 faiss-cpu
 sentence-transformers
-
-# Data Visualization
-matplotlib
-seaborn
-plotly
-
-# Jupyter & Notebooks
-jupyter
-jupyterlab
-ipykernel
-
-# Utilities & File Handling
-tqdm
-requests
-
-# Evaluation & Testing
-pytest
-rouge-score
-evaluate
-
-# MLOps additions
 fastapi
 uvicorn
 pydantic
-mlflow
-
-
-streamlit 
+requests
+pandas
+numpy
