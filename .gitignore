@@ -3,11 +3,7 @@
 # =============================================
 
 # Models (exclude large model files)
-models/fine-tuned-chatbot/
-models/fast-chatbot/
-models/mistral-7b*/
-models/llama*/
-models/gemini_rag/  # Vector database files
+models/gemini-rag/  # Vector database files
 models/*/
 !models/.gitkeep
 
@@ -23,8 +19,8 @@ embeddings/
 *.faiss
 *.pkl
 
-# API keys and configurations
-config/api_keys.py
+# API keys and configurations - ⚠️ KEEP THESE IN GIT FOR DEPLOYMENT
+# config/api_keys.py                    # ← REMOVE THIS LINE (need for deployment)
 config/__pycache__/
 *.env
 .env
@@ -112,3 +108,7 @@ docs/_build/
 
 # Colab
 .colab/
+
+# MLOps
+mlruns/
+monitoring/
