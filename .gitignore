@@ -12,11 +12,10 @@ data/processed/
 data/splits/
 data/feedback/
 
-# Vector databases and embeddings
+# Vector databases and embeddings - SPECIFIC EXCLUSIONS
 vector_db/
 embeddings/
-*.faiss
-*.pkl
+# REMOVED: *.faiss and *.pkl - these were blocking the small DB
 
 # API keys and configurations - ⚠️ KEEP THESE IN GIT FOR DEPLOYMENT
 # config/api_keys.py                    # ← REMOVE THIS LINE (need for deployment)
