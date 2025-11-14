@@ -42,3 +42,12 @@ requests
 pytest
 rouge-score
 evaluate
+
+# MLOps additions
+fastapi
+uvicorn
+pydantic
+mlflow
+
+
+streamlit 
