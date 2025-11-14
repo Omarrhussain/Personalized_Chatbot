@@ -3,9 +3,8 @@
 # =============================================
 
 # Models (exclude large model files)
-models/gemini-rag/  # Vector database files
-models/*/
-!models/.gitkeep
+model/gemini-rag/
+!model/gemini-rag-small/
 
 # Data files
 data/raw/
