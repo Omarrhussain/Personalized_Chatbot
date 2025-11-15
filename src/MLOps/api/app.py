@@ -7,14 +7,10 @@ import traceback
 import logging
 from pathlib import Path
 
-# Fix import paths for YOUR FOLDER STRUCTURE
-current_file = Path(__file__)
-# app.py is at: src/MLOps/api/app.py
-# So project root is: src/MLOps/api/../../.. = project root
-project_root = current_file.parent.parent.parent.parent
-
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+# Simple path setup
+current_dir = Path(__file__).parent
+project_root = current_dir.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
