@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class GeminiRAGSystem:
     def __init__(self, vector_db_path: str = None):
-    # Use absolute path to vector database
+        # Use absolute path to vector database
         if vector_db_path is None:
             # Try multiple deployment environments - CORRECTED PATHS
             possible_paths = [
@@ -41,6 +41,19 @@ class GeminiRAGSystem:
             self.vector_db_path = Path(vector_db_path)
         
         logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
+        
+        # If vector DB doesn't exist, try to create it
+        if not self.vector_db_path.exists():
+            logger.warning(f"Vector DB not found at {self.vector_db_path}, attempting to create...")
+            self._create_fallback_vector_db()
+        
+        # Initialize components
+        self.vector_db = self._load_vector_db()
+        self.retriever = self.vector_db.as_retriever(search_kwargs={"k": 3})
+        self.model = self._initialize_gemini()
+        self.conversation_history: List[Tuple[str, str]] = []
+        
+        logger.info("✅ Gemini RAG System initialized successfully!")
 
     def _load_vector_db(self) -> FAISS:
         """Load FAISS vector database"""
@@ -86,6 +99,32 @@ class GeminiRAGSystem:
             return model
         except Exception as e:
             logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
+            raise
+
+    def _create_fallback_vector_db(self):
+        """Create a minimal vector database if none exists"""
+        try:
+            from langchain_core.documents import Document
+            
+            # Create minimal knowledge base
+            documents = [
+                Document(page_content="This is a fallback knowledge base for deployment.", metadata={"source": "fallback"}),
+                Document(page_content="The main vector database was not found during deployment.", metadata={"source": "fallback"}),
+                Document(page_content="Please check that gemini-rag-small/ is properly deployed.", metadata={"source": "fallback"}),
+            ]
+            
+            # Create directory
+            self.vector_db_path.mkdir(parents=True, exist_ok=True)
+            
+            # Create and save vector DB
+            embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            vector_db = FAISS.from_documents(documents, embeddings)
+            vector_db.save_local(str(self.vector_db_path))
+            
+            logger.info("✅ Created fallback vector database")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to create fallback vector DB: {str(e)}")
             raise
 
     def ask_question(self, question: str, use_history: bool = True) -> Dict:
