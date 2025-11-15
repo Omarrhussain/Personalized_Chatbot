@@ -24,25 +24,27 @@ def is_cloud_environment():
         os.getenv('VERCEL'),  # Vercel
     ])
 
+# Add src to Python path
+current_dir = os.path.dirname(__file__)
+project_root = current_dir
+src_path = os.path.join(project_root, 'src')
+
+for path in [project_root, src_path]:
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
 if __name__ == "__main__":
-    print("🚀 Starting Gemini RAG Chatbot API...")
+    # ✅ FORCE port 8000 (ignore any other port)
+    port = 8000
+    host = "0.0.0.0"
     
-    # Determine environment
-    is_cloud = is_cloud_environment()
-    port = int(os.getenv('PORT', 8000))
-    host = "0.0.0.0" if is_cloud else "127.0.0.1"
+    print(f"🚀 Starting on {host}:{port}")
+    print(f"📍 Forced port: {port}")
     
-    print(f"🌐 Environment: {'☁️ Cloud' if is_cloud else '💻 Local'}")
-    print(f"📍 Server URL: {host}:{port}")
-    print(f"📚 API Docs: http://{'localhost' if not is_cloud else host}:{port}/docs")
-    print("⏹️  Press CTRL+C to stop")
-    print("-" * 50)
-    
-    # CORRECT IMPORT PATH FOR YOUR STRUCTURE
     uvicorn.run(
-        "src.MLOps.api.app:app",  # This is correct for your structure!
+        "src.MLOps.api.app:app",
         host=host,
-        port=port,
-        reload=not is_cloud,  # Disable reload in cloud for stability
+        port=port,  # ✅ Now it will always use 8000
+        reload=False,
         log_level="info"
     )

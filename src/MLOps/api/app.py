@@ -142,25 +142,17 @@ async def clear_conversation_history():
         raise HTTPException(status_code=500, detail=str(e))
 
 def start_server():
-    """Start the server with better configuration"""
-    print("🚀 Starting Gemini RAG Chatbot API...")
-    print("📍 Access URLs:")
-    print("   • API Documentation: http://127.0.0.1:8000/docs")
-    print("   • Health Check: http://127.0.0.1:8000/health") 
-    print("⏹️  Press CTRL+C to stop the server")
-    print("-" * 50)
+    # ✅ Use the same forced port
+    port = 8000
+    host = "0.0.0.0"
     
-    # Use environment port or default to 8000
-    port = int(os.getenv('PORT', 8000))
-    host = "0.0.0.0" if is_cloud_environment() else "127.0.0.1"
-    
-    logger.info(f"🌐 Server binding to {host}:{port}")
+    print(f"🔧 Starting server on {host}:{port}")
     
     uvicorn.run(
         app,
         host=host,
-        port=port,
-        reload=not is_cloud_environment(),  # Disable reload in cloud
+        port=port,  # ✅ Same port
+        reload=False,
         log_level="info"
     )
 
