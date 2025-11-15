@@ -14,16 +14,17 @@ logger = logging.getLogger(__name__)
 
 class GeminiRAGSystem:
     def __init__(self, vector_db_path: str = None):
-        # Use absolute path to vector database
+    # Use absolute path to vector database
         if vector_db_path is None:
-            # Try multiple deployment environments - UPDATED FOR SMALL DB
+            # Try multiple deployment environments - CORRECTED PATHS
             possible_paths = [
-                Path(__file__).parent.parent.parent / "model" / "gemini-rag-small",  # Local
-                Path("/app/model/gemini-rag-small"),  # Railway
-                Path("/opt/render/project/src/model/gemini-rag-small"),  # Render
-                Path("./model/gemini-rag-small"),  # Current directory
-                # Fallback to old path just in case
-                Path(__file__).parent.parent.parent / "model" / "gemini-rag",  # Legacy
+                Path(__file__).parent.parent.parent / "gemini-rag-small",  # Root level - Local
+                Path("/app/gemini-rag-small"),  # Root level - Railway
+                Path("/opt/render/project/src/gemini-rag-small"),  # Root level - Render
+                Path("./gemini-rag-small"),  # Current directory - Root level
+                # Also check model/ folder as fallback
+                Path(__file__).parent.parent.parent / "model" / "gemini-rag-small",  # Model folder
+                Path("/app/model/gemini-rag-small"),  # Model folder - Railway
             ]
             
             for path in possible_paths:
@@ -32,22 +33,14 @@ class GeminiRAGSystem:
                     logger.info(f"✅ Found vector database at: {path}")
                     break
             else:
-                # If no path found, use small DB as default
+                # If no path found, use root level as default
                 current_file = Path(__file__)
                 project_root = current_file.parent.parent.parent
-                self.vector_db_path = project_root / "model" / "gemini-rag-small"
+                self.vector_db_path = project_root / "gemini-rag-small"
         else:
             self.vector_db_path = Path(vector_db_path)
         
         logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
-        
-        # Initialize components
-        self.vector_db = self._load_vector_db()
-        self.retriever = self.vector_db.as_retriever(search_kwargs={"k": 3})
-        self.model = self._initialize_gemini()
-        self.conversation_history: List[Tuple[str, str]] = []
-        
-        logger.info("✅ Gemini RAG System initialized successfully!")
 
     def _load_vector_db(self) -> FAISS:
         """Load FAISS vector database"""
