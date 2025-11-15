@@ -56,10 +56,13 @@ with st.sidebar:
 # Function to check API health - EXACTLY LIKE streamlit_app.py
 def check_api_health(api_url):
     try:
-        response = requests.get(f"{api_url}/health", timeout=5)
+        # INCREASE TIMEOUT from 5 to 30 seconds
+        response = requests.get(f"{api_url}/health", timeout=30)
         return response.status_code == 200, "✅ API is running!"
     except requests.exceptions.ConnectionError:
         return False, "❌ API server is not running. Check your Railway deployment."
+    except requests.exceptions.Timeout:
+        return False, "❌ Connection timed out. Railway might be starting up."
     except Exception as e:
         return False, f"❌ Error: {str(e)}"
 
