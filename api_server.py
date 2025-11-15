@@ -29,7 +29,7 @@ if __name__ == "__main__":
     
     # Determine environment
     is_cloud = is_cloud_environment()
-    port = int(os.getenv('PORT', 8080))
+    port = int(os.getenv('PORT', 8000))
     host = "0.0.0.0" if is_cloud else "127.0.0.1"
     
     print(f"🌐 Environment: {'☁️ Cloud' if is_cloud else '💻 Local'}")
