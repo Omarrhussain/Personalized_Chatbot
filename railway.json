@@ -3,6 +3,6 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "uvicorn src.MLOps.api.app:app --host 0.0.0.0 --port $PORT"
+    "startCommand": "python api_server.py"
   }
 }
