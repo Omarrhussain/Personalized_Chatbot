@@ -35,7 +35,7 @@ with st.sidebar:
     st.header("🔧 Configuration")
     
     # Your Railway URL - UPDATE THIS with your actual Railway app URL
-    RAILWAY_URL = os.getenv('RAILWAY_API_URL', "https://personalized-chatbot-api-production.up.railway.app")
+    RAILWAY_URL = os.getenv('RAILWAY_API_URL', "personalizedchatbot-production.up.railway.app")
     RAILWAY_URL = RAILWAY_URL.rstrip('/')  # Remove trailing slash
     
     # Allow override of URL for cloud
