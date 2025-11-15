@@ -1,102 +1,146 @@
 import streamlit as st
 import requests
+import os
 
-# Page configuration
+# Page configuration - EXACTLY LIKE streamlit_app.py
 st.set_page_config(
-    page_title="Personalized RAG Chatbot - Cloud",
+    page_title="Personalized RAG Chatbot",
     page_icon="🤖",
     layout="wide"
 )
 
-st.markdown('<div style="font-size: 2.5rem; color: #1f77b4; text-align: center; margin-bottom: 2rem;">🤖 Personalized RAG Chatbot - Cloud</div>', unsafe_allow_html=True)
+# Simple CSS for better readability (no colors) - EXACTLY LIKE streamlit_app.py
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 2.5rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .chat-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Your Railway URL - UPDATE THIS
-RAILWAY_URL = "https://personalized-chatbot-api-production.up.railway.app/"  # ⬅️ CHANGE TO YOUR URL
+# Header - EXACTLY LIKE streamlit_app.py
+st.markdown('<div class="main-header">🤖 Personalized RAG Chatbot</div>', unsafe_allow_html=True)
 
+# API Configuration - MODIFIED FOR CLOUD
 with st.sidebar:
     st.header("🔧 Configuration")
-    st.info(f"**API URL:** {RAILWAY_URL}")
     
-    # Debug section
+    # Your Railway URL - UPDATE THIS with your actual Railway app URL
+    RAILWAY_URL = os.getenv('RAILWAY_API_URL', "https://personalized-chatbot-api-production.up.railway.app")
+    RAILWAY_URL = RAILWAY_URL.rstrip('/')  # Remove trailing slash
+    
+    # Allow override of URL for cloud
+    api_url = st.text_input(
+        "API Server URL", 
+        value=RAILWAY_URL,
+        help="Your Railway API URL"
+    )
+    
     st.markdown("---")
-    st.header("🐛 Debug Tools")
+    st.markdown("### 🚀 Cloud Deployment")
+    st.markdown("""
+    This version connects to your **Railway API**.
     
-    if st.button("Test /health Endpoint"):
-        try:
-            response = requests.get(f"{RAILWAY_URL}/health", timeout=10)
-            st.write(f"Status: {response.status_code}")
-            st.write(f"Response: {response.json()}")
-        except Exception as e:
-            st.error(f"Error: {e}")
-    
-    if st.button("Test /chat Endpoint"):
-        try:
-            response = requests.post(
-                f"{RAILWAY_URL}/chat",
-                json={"message": "Hello, are you working?", "use_history": False},
-                timeout=30
-            )
-            st.write(f"Status: {response.status_code}")
-            st.write(f"Full Response: {response.json()}")
-        except Exception as e:
-            st.error(f"Error: {e}")
+    Make sure your API is deployed and running!
+    """)
 
-# Initialize chat history
+# Function to check API health - EXACTLY LIKE streamlit_app.py
+def check_api_health(api_url):
+    try:
+        response = requests.get(f"{api_url}/health", timeout=5)
+        return response.status_code == 200, "✅ API is running!"
+    except requests.exceptions.ConnectionError:
+        return False, "❌ API server is not running. Check your Railway deployment."
+    except Exception as e:
+        return False, f"❌ Error: {str(e)}"
+
+# Health check on startup - EXACTLY LIKE streamlit_app.py
+health_status, health_message = check_api_health(api_url)
+if health_status:
+    st.sidebar.success(health_message)
+else:
+    st.sidebar.error(health_message)
+
+# Initialize chat history - EXACTLY LIKE streamlit_app.py
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat messages
+# Display chat messages - SIMPLE VERSION WITHOUT COLORS - EXACTLY LIKE streamlit_app.py
 st.markdown("### 💬 Conversation")
 
+# Show all messages in the chat - EXACTLY LIKE streamlit_app.py
 for message in st.session_state.messages:
     if message["role"] == "user":
         st.markdown(f"**You:** {message['content']}")
     else:
         st.markdown(f"**Assistant:** {message['content']}")
+        if message.get("sources"):
+            st.caption(f"📚 Used {message['sources']} knowledge sources")
     st.markdown("---")
 
+# Show empty state if no messages - EXACTLY LIKE streamlit_app.py
 if not st.session_state.messages:
     st.info("💡 Start a conversation by typing a message below!")
 
-# Chat input
-user_input = st.text_input("Your message:", placeholder="Ask me anything...")
+# Chat input - EXACTLY LIKE streamlit_app.py
+with st.form("chat_form", clear_on_submit=True):
+    user_input = st.text_input("Your message:", placeholder="Ask me anything about AI, machine learning, etc...", key="chat_input")
+    submitted = st.form_submit_button("🚀 Send Message")
 
-if st.button("Send Message") and user_input:
-    # Add user message immediately
+if submitted and user_input:
+    # Add user message to chat history - EXACTLY LIKE streamlit_app.py
     st.session_state.messages.append({"role": "user", "content": user_input})
-    st.rerun()
     
-    # Get bot response
+    # Get bot response - MODIFIED FOR CLOUD ERROR HANDLING
     try:
         with st.spinner("🤔 Thinking..."):
             response = requests.post(
-                f"{RAILWAY_URL}/chat",
+                f"{api_url}/chat",
                 json={"message": user_input, "use_history": True},
-                timeout=30
+                timeout=60
             )
             
-        # Debug info
-        st.sidebar.write(f"Response Status: {response.status_code}")
-        
         if response.status_code == 200:
             data = response.json()
-            st.sidebar.write(f"Success: {data.get('success', False)}")
-            
-            if data.get("success"):
-                # Add bot response
+            if data["success"]:
+                # Add bot response to chat history - EXACTLY LIKE streamlit_app.py
                 st.session_state.messages.append({
                     "role": "assistant", 
-                    "content": data["answer"]
+                    "content": data["answer"],
+                    "sources": data.get("sources_count", 0)
                 })
-                st.rerun()
+                st.success("✅ Response received!")
+                st.rerun()  # Refresh to show new messages
             else:
-                st.error(f"API Error: {data.get('answer', 'Unknown error')}")
+                st.error(f"❌ API Error: {data['answer']}")
+                st.rerun()
+                
         else:
-            st.error(f"HTTP Error: {response.status_code}")
+            st.error(f"❌ HTTP Error: {response.status_code}")
+            st.rerun()
             
-    except Exception as e:
-        st.error(f"Connection error: {str(e)}")
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Connection error: {str(e)}")
+        st.rerun()
 
-if st.button("Clear Chat"):
+# Clear chat button - EXACTLY LIKE streamlit_app.py
+if st.sidebar.button("🗑️ Clear Chat History"):
     st.session_state.messages = []
     st.rerun()
+
+# Manual health check button - EXACTLY LIKE streamlit_app.py
+if st.sidebar.button("🩺 Check API Health"):
+    health_status, health_message = check_api_health(api_url)
+    if health_status:
+        st.sidebar.success(health_message)
+    else:
+        st.sidebar.error(health_message)

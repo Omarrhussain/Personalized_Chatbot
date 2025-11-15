@@ -4,7 +4,7 @@ import os
 
 # Page configuration
 st.set_page_config(
-    page_title="Gemini RAG Chatbot",
+    page_title="Personalized RAG Chatbot",
     page_icon="🤖",
     layout="wide"
 )
@@ -28,7 +28,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<div class="main-header">🤖 Gemini RAG Chatbot</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">🤖 Personalized RAG Chatbot</div>', unsafe_allow_html=True)
 
 # API Configuration
 with st.sidebar:

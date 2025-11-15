@@ -13,47 +13,60 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
 logger = logging.getLogger(__name__)
 
 class GeminiRAGSystem:
-    def __init__(self, vector_db_path: str = None):
-        # Use absolute path to vector database
+    def __init__(self, vector_db_path: str = None, use_small_model: bool = None):
+        """
+        Initialize Gemini RAG System
+        
+        Args:
+            vector_db_path: Custom path to vector database
+            use_small_model: If True, use gemini-rag-small. If False, use gemini-rag.
+        """
+        # Determine which model to use
+        if use_small_model is None:
+            # Auto-detect: check if running on cloud
+            is_cloud = any([
+                os.getenv('RAILWAY_ENVIRONMENT_NAME'),
+                os.getenv('RENDER') == 'true',
+                os.getenv('DYNO'),
+                os.getenv('VERCEL'),
+            ])
+            use_small_model = is_cloud
+        
+        self.use_small_model = use_small_model
+        model_name = "gemini-rag-small" if use_small_model else "gemini-rag"
+        logger.info(f"Using vector database: {model_name}")
+        
+        # Set vector database path
         if vector_db_path is None:
-            # Try multiple deployment environments - CORRECTED PATHS
             possible_paths = [
-                Path(__file__).parent.parent.parent / "gemini-rag-small",  # Root level - Local
-                Path("/app/gemini-rag-small"),  # Root level - Railway
-                Path("/opt/render/project/src/gemini-rag-small"),  # Root level - Render
-                Path("./gemini-rag-small"),  # Current directory - Root level
-                # Also check model/ folder as fallback
-                Path(__file__).parent.parent.parent / "model" / "gemini-rag-small",  # Model folder
-                Path("/app/model/gemini-rag-small"),  # Model folder - Railway
+                Path(__file__).parent.parent.parent / "model" / model_name,
+                Path(__file__).parent.parent.parent / model_name,
+                Path("/app/model") / model_name,
+                Path("/app") / model_name,
+                Path("/opt/render/project/src/model") / model_name,
+                Path("/opt/render/project") / model_name,
             ]
             
+            self.vector_db_path = None
             for path in possible_paths:
                 if path.exists():
                     self.vector_db_path = path
-                    logger.info(f"✅ Found vector database at: {path}")
+                    logger.info(f"Found vector database at: {path}")
                     break
-            else:
-                # If no path found, use root level as default
-                current_file = Path(__file__)
-                project_root = current_file.parent.parent.parent
-                self.vector_db_path = project_root / "gemini-rag-small"
+            
+            if not self.vector_db_path:
+                self.vector_db_path = possible_paths[0]
+                logger.warning(f"Vector DB not found, using: {self.vector_db_path}")
         else:
             self.vector_db_path = Path(vector_db_path)
         
-        logger.info(f"🔍 Using vector DB path: {self.vector_db_path}")
-        
-        # If vector DB doesn't exist, try to create it
-        if not self.vector_db_path.exists():
-            logger.warning(f"Vector DB not found at {self.vector_db_path}, attempting to create...")
-            self._create_fallback_vector_db()
-        
-        # Initialize components
+        # Load vector database
         self.vector_db = self._load_vector_db()
         self.retriever = self.vector_db.as_retriever(search_kwargs={"k": 3})
         self.model = self._initialize_gemini()
         self.conversation_history: List[Tuple[str, str]] = []
         
-        logger.info("✅ Gemini RAG System initialized successfully!")
+        logger.info("Gemini RAG System initialized successfully!")
 
     def _load_vector_db(self) -> FAISS:
         """Load FAISS vector database"""
@@ -90,41 +103,29 @@ class GeminiRAGSystem:
             raise Exception(f"Failed to load vector database: {str(e)}")
 
     def _initialize_gemini(self):
-        """Initialize Gemini model"""
+        """Initialize Gemini model using config/api_keys.py"""
         try:
-            # Configure Gemini - make sure you have GOOGLE_API_KEY set
-            genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
-            model = genai.GenerativeModel('gemini-pro')
-            logger.info("✅ Gemini model initialized successfully!")
+            # Import API key from your config file
+            try:
+                from config.api_keys import GEMINI_API_KEY
+                api_key = GEMINI_API_KEY
+                logger.info("✅ Loaded Gemini API key from config/api_keys.py")
+            except ImportError:
+                # Fallback to environment variable
+                api_key = os.getenv('GEMINI_API_KEY')
+                if not api_key:
+                    raise ValueError("GEMINI_API_KEY not found in config/api_keys.py or environment variables")
+                logger.info("✅ Loaded Gemini API key from environment variable")
+            
+            # Configure Gemini
+            genai.configure(api_key=api_key)
+            
+            # Use gemini-2.5-flash model
+            model = genai.GenerativeModel('gemini-2.5-flash')  # Updated to your model
+            logger.info("✅ Gemini 2.5 Flash model initialized!")
             return model
         except Exception as e:
             logger.error(f"❌ Failed to initialize Gemini model: {str(e)}")
-            raise
-
-    def _create_fallback_vector_db(self):
-        """Create a minimal vector database if none exists"""
-        try:
-            from langchain_core.documents import Document
-            
-            # Create minimal knowledge base
-            documents = [
-                Document(page_content="This is a fallback knowledge base for deployment.", metadata={"source": "fallback"}),
-                Document(page_content="The main vector database was not found during deployment.", metadata={"source": "fallback"}),
-                Document(page_content="Please check that gemini-rag-small/ is properly deployed.", metadata={"source": "fallback"}),
-            ]
-            
-            # Create directory
-            self.vector_db_path.mkdir(parents=True, exist_ok=True)
-            
-            # Create and save vector DB
-            embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-            vector_db = FAISS.from_documents(documents, embeddings)
-            vector_db.save_local(str(self.vector_db_path))
-            
-            logger.info("✅ Created fallback vector database")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to create fallback vector DB: {str(e)}")
             raise
 
     def ask_question(self, question: str, use_history: bool = True) -> Dict:

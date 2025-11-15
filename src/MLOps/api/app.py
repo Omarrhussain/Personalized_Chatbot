@@ -7,39 +7,52 @@ import traceback
 import logging
 from pathlib import Path
 
-# Fix path for Railway deployment
-def get_vector_db_path():
-    # Try multiple possible paths
-    possible_paths = [
-        Path("model/gemini-rag-small"),  # Local development
-        Path("/app/model/gemini-rag-small"),  # Railway default
-        Path("./model/gemini-rag-small"),  # Relative path
-    ]
-    
-    for path in possible_paths:
-        if path.exists():
-            print(f"✅ Found vector database at: {path}")
-            return str(path)
-    
-    # List what directories actually exist
-    print("🔍 Searching for model directory...")
-    for root, dirs, files in os.walk("/app"):
-        for dir in dirs:
-            if "model" in dir.lower():
-                print(f"Found directory: {os.path.join(root, dir)}")
-    
-    raise FileNotFoundError("Vector database not found in any expected location")
+# Fix import paths for YOUR FOLDER STRUCTURE
+current_file = Path(__file__)
+# app.py is at: src/MLOps/api/app.py
+# So project root is: src/MLOps/api/../../.. = project root
+project_root = current_file.parent.parent.parent.parent
 
-# Add src to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../..'))
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Import GeminiRAGSystem - FROM YOUR STRUCTURE
+try:
+    # Your gemini_rag_system.py is at: src/model/gemini_rag_system.py
+    from src.model.gemini_rag_system import GeminiRAGSystem
+    logger.info("✅ Imported GeminiRAGSystem from src.model")
+except ImportError as e:
+    logger.error(f"❌ Import failed: {e}")
+    # Fallback: manual import
+    gemini_system_path = project_root / "src" / "model" / "gemini_rag_system.py"
+    if gemini_system_path.exists():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gemini_rag_system", gemini_system_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        GeminiRAGSystem = module.GeminiRAGSystem
+        logger.info("✅ Imported GeminiRAGSystem via manual import")
+    else:
+        logger.error(f"❌ File not found: {gemini_system_path}")
+        raise
+
+# Check if we're in cloud environment
+def is_cloud_environment():
+    """Detect if running on cloud platform"""
+    return any([
+        os.getenv('RAILWAY_ENVIRONMENT_NAME'),
+        os.getenv('RENDER') == 'true',
+        os.getenv('DYNO'),
+        os.getenv('VERCEL'),
+    ])
+
 # Initialize FastAPI
 app = FastAPI(
-    title="Gemini RAG Chatbot API",
+    title="Personalized RAG Chatbot API",
     description="AI Chatbot with RAG capabilities",
     version="1.0.0"
 )
@@ -57,7 +70,7 @@ class ChatResponse(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Gemini RAG Chatbot API is running!"}
+    return {"message": "Personalized RAG Chatbot API is running!"}
 
 @app.get("/health")
 async def health_check():
@@ -72,20 +85,16 @@ async def chat_endpoint(request: ChatRequest):
     start_time = time.time()
     
     try:
-        # Import here to catch import errors
-        from src.model.gemini_rag_system import GeminiRAGSystem
-        
-        # Initialize chatbot (do it here to catch init errors)
+        # Initialize chatbot once on first request
         if not hasattr(app, 'chatbot'):
             logger.info("Initializing Gemini RAG System...")
-            app.chatbot = GeminiRAGSystem()
-            logger.info("✅ Gemini RAG System initialized successfully!")
+            use_small = is_cloud_environment()
+            app.chatbot = GeminiRAGSystem(use_small_model=use_small)
+            logger.info("✅ Gemini RAG System initialized!")
         
         # Process the request
         result = app.chatbot.ask_question(request.message, request.use_history)
         response_time = time.time() - start_time
-        
-        logger.info(f"Chat request processed in {response_time:.2f}s")
         
         return ChatResponse(
             success=result['success'],
@@ -96,15 +105,12 @@ async def chat_endpoint(request: ChatRequest):
         
     except Exception as e:
         response_time = time.time() - start_time
-        error_traceback = traceback.format_exc()
+        logger.error(f"Error in chat endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
         
-        logger.error(f"❌ Error in chat endpoint: {str(e)}")
-        logger.error(f"Traceback: {error_traceback}")
-        
-        # Return detailed error for debugging
         return ChatResponse(
             success=False,
-            answer=f"Server Error: {str(e)}",
+            answer=f"Error: {str(e)}",
             sources_count=0,
             response_time=response_time
         )
@@ -144,11 +150,17 @@ def start_server():
     print("⏹️  Press CTRL+C to stop the server")
     print("-" * 50)
     
+    # Use environment port or default to 8000
+    port = int(os.getenv('PORT', 8000))
+    host = "0.0.0.0" if is_cloud_environment() else "127.0.0.1"
+    
+    logger.info(f"🌐 Server binding to {host}:{port}")
+    
     uvicorn.run(
         app,
-        host="127.0.0.1",
-        port=8000,
-        reload=True,
+        host=host,
+        port=port,
+        reload=not is_cloud_environment(),  # Disable reload in cloud
         log_level="info"
     )
 
